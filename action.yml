@@ -19,4 +19,4 @@ outputs:
     description: "Merged config as a list of values (eg: outputs['component.nestedSetting'] - must use bracket notation to access)"
 runs:
   using: 'node20'
-  main: 'index.js'
+  main: 'dist/index.js'
