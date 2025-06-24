@@ -8,6 +8,8 @@ function mergeConfig({ configFile, env, region }) {
         ? JSON.parse(fs.readFileSync(path.resolve(configFile), 'utf8'))
         : configFile;
 
+    const envSource = config.accounts || config.environments;
+
     function deepMerge(...objects) {
         const result = {};
         for (const obj of objects) {
@@ -32,24 +34,27 @@ function mergeConfig({ configFile, env, region }) {
 
     function getMergedComponentConfig(componentName) {
         const defaultComp = config.defaults?.[componentName] || {};
-        const envComp = config.accounts?.[env]?.[componentName] || {};
+        const envComp = envSource?.[env]?.[componentName] || {};
         const regionComp = region
-            ? config.accounts?.[env]?.regions?.[region]?.[componentName] || {}
+            ? envSource?.[env]?.regions?.[region]?.[componentName] || {}
             : {};
         return deepMerge(defaultComp, envComp, regionComp);
     }
 
     function getAllComponentKeys() {
         const keys = new Set();
-        if (config.defaults) Object.keys(config.defaults).forEach(k => keys.add(k));
-        if (config.accounts?.[env]) {
-            Object.keys(config.accounts[env])
-                .filter(k => k !== 'regions' && k !== 'accountId')
-                .forEach(k => keys.add(k));
-            if (region && config.accounts[env].regions?.[region]) {
-                Object.keys(config.accounts[env].regions[region])
-                    .filter(k => k !== 'name')
-                    .forEach(k => keys.add(k));
+        function isComponent(configObj, key) {
+            const value = configObj[key];
+            return value && typeof value === 'object' && !Array.isArray(value);
+        }
+
+        if (config.defaults) {
+            Object.keys(config.defaults).filter(k => isComponent(config.defaults, k)).forEach(k => keys.add(k));
+        }
+        if (envSource?.[env]) {
+            Object.keys(envSource[env]).filter(k => isComponent(envSource[env], k) && k !== 'regions').forEach(k => keys.add(k));
+            if (region && envSource[env].regions?.[region]) {
+                Object.keys(envSource[env].regions[region]).filter(k => isComponent(envSource[env].regions[region], k)).forEach(k => keys.add(k));
             }
         }
         return Array.from(keys);
@@ -60,9 +65,9 @@ function mergeConfig({ configFile, env, region }) {
             return typeof v !== 'object' || v === null || Array.isArray(v);
         }
         const d = Object.fromEntries(Object.entries(config.defaults || {}).filter(isNonComponent));
-        const e = Object.fromEntries(Object.entries(config.accounts?.[env] || {}).filter(isNonComponent));
+        const e = Object.fromEntries(Object.entries(envSource?.[env] || {}).filter(isNonComponent));
         const r = region
-            ? Object.fromEntries(Object.entries(config.accounts?.[env]?.regions?.[region] || {}).filter(isNonComponent))
+            ? Object.fromEntries(Object.entries(envSource?.[env]?.regions?.[region] || {}).filter(isNonComponent))
             : {};
         return deepMerge(d, e, r);
     }
