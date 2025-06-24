@@ -14,9 +14,7 @@ inputs:
     description: 'Delimiter for flattening (default .)'
     required: false
     default: '.'
-outputs:
-  config:
-    description: "Merged config as a list of values (eg: outputs['component.nestedSetting'] - must use bracket notation to access)"
+
 runs:
   using: 'node20'
   main: 'dist/index.js'
