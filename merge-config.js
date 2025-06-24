@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-function mergeConfig({ configFile, env, region }) {
+function mergeConfig({ configFile, env, region, output, delimiter }) {
     const config = typeof configFile === 'string'
         ? JSON.parse(fs.readFileSync(path.resolve(configFile), 'utf8'))
         : configFile;
@@ -72,10 +72,15 @@ function mergeConfig({ configFile, env, region }) {
         return deepMerge(d, e, r);
     }
 
-    return {
+    const merged = {
         ...getGlobalMerged(),
         ...Object.fromEntries(getAllComponentKeys().map(k => [k, getMergedComponentConfig(k)])),
     };
+
+    if (output === 'flatten') {
+        return flatten(merged, '', delimiter || '.');
+    }
+    return merged;
 }
 
 // --- Flattening logic
@@ -133,14 +138,7 @@ if (require.main === module) {
         process.exit(1);
     }
 
-    const merged = mergeConfig({ configFile, env, region });
-
-    let result;
-    if (output === 'flatten') {
-        result = flatten(merged, '', delimiter);
-    } else {
-        result = merged;
-    }
+    const result = mergeConfig({ configFile, env, region, output, delimiter });
 
     if (tfMode) {
         // For Terraform, output as { "mergedConfig": <object> }
