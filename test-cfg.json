@@ -18,7 +18,7 @@
       "accountId": "123456789012",
       "otherField": "some-value",
       "regions": {
-        "usw2": {
+        "us-west-2": {
           "name": "Development (us-west-2)",
           "network": {
             "vpc_cidr": "10.1.0.0/21",

@@ -10,14 +10,41 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
 
     const envSource = config.accounts || config.environments;
 
+    // Region mapping: short code -> full name
+    const regionMapping = {
+        'use1': 'us-east-1',
+        'use2': 'us-east-2',
+        'usw1': 'us-west-1',
+        'usw2': 'us-west-2',
+        'cac1': 'ca-central-1',
+        'euw1': 'eu-west-1',
+        'euw2': 'eu-west-2',
+        'euw3': 'eu-west-3',
+        'euc1': 'eu-central-1',
+        'eun1': 'eu-north-1',
+        'aps1': 'ap-south-1',
+        'apne1': 'ap-northeast-1',
+        'apne2': 'ap-northeast-2',
+        'apne3': 'ap-northeast-3',
+        'apse1': 'ap-southeast-1',
+        'apse2': 'ap-southeast-2',
+        'apse3': 'ap-southeast-3',
+        'ape1': 'ap-east-1',
+        'sae1': 'sa-east-1'
+    };
+
+    // Convert region to full name if it's a short code
+    const fullRegion = region ? (regionMapping[region] || region) : region;
+    const shortRegion = region ? (Object.keys(regionMapping).find(key => regionMapping[key] === fullRegion) || region) : region;
+
     // Validate environment exists
     if (!envSource || !envSource[env]) {
         throw new Error(`Environment '${env}' not found in config file`);
     }
 
-    // Validate region exists if specified
-    if (region && (!envSource[env].regions || !envSource[env].regions[region])) {
-        throw new Error(`Region '${region}' not found in environment '${env}'`);
+    // Validate region exists if specified (check using full region name)
+    if (fullRegion && (!envSource[env].regions || !envSource[env].regions[fullRegion])) {
+        throw new Error(`Region '${fullRegion}' not found in environment '${env}'`);
     }
 
     function deepMerge(...objects) {
@@ -45,8 +72,8 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
     function getMergedComponentConfig(componentName) {
         const defaultComp = config.defaults?.[componentName] || {};
         const envComp = envSource?.[env]?.[componentName] || {};
-        const regionComp = region
-            ? envSource?.[env]?.regions?.[region]?.[componentName] || {}
+        const regionComp = fullRegion
+            ? envSource?.[env]?.regions?.[fullRegion]?.[componentName] || {}
             : {};
         return deepMerge(defaultComp, envComp, regionComp);
     }
@@ -63,8 +90,8 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
         }
         if (envSource?.[env]) {
             Object.keys(envSource[env]).filter(k => isComponent(envSource[env], k) && k !== 'regions').forEach(k => keys.add(k));
-            if (region && envSource[env].regions?.[region]) {
-                Object.keys(envSource[env].regions[region]).filter(k => isComponent(envSource[env].regions[region], k)).forEach(k => keys.add(k));
+            if (fullRegion && envSource[env].regions?.[fullRegion]) {
+                Object.keys(envSource[env].regions[fullRegion]).filter(k => isComponent(envSource[env].regions[fullRegion], k)).forEach(k => keys.add(k));
             }
         }
         return Array.from(keys);
@@ -76,8 +103,8 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
         }
         const d = Object.fromEntries(Object.entries(config.defaults || {}).filter(isNonComponent));
         const e = Object.fromEntries(Object.entries(envSource?.[env] || {}).filter(isNonComponent));
-        const r = region
-            ? Object.fromEntries(Object.entries(envSource?.[env]?.regions?.[region] || {}).filter(isNonComponent))
+        const r = fullRegion
+            ? Object.fromEntries(Object.entries(envSource?.[env]?.regions?.[fullRegion] || {}).filter(isNonComponent))
             : {};
         return deepMerge(d, e, r);
     }
@@ -89,7 +116,8 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
 
     // Add environment and region to the merged result
     merged.env = env;
-    merged.region = region;
+    merged.region = fullRegion || '';
+    merged.region_short = shortRegion || '';
 
     if (output === 'flatten') {
         return flatten(merged, '', delimiter || '.');

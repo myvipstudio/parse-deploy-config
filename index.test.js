@@ -13,7 +13,8 @@ describe('mergeConfig function', () => {
 
     // Verify specific values that should be present for dev/usw2
     expect(result.env).toBe('dev');
-    expect(result.region).toBe('usw2');
+    expect(result.region).toBe('us-west-2');
+    expect(result.region_short).toBe('usw2');
     expect(result.accountId).toBe('123456789012');
     expect(result.otherField).toBe('some-value');
     expect(result['tags.Project']).toBe('project-name');
@@ -60,7 +61,8 @@ describe('mergeConfig function', () => {
 
     // Verify custom delimiter is used
     expect(result.env).toBe('dev');
-    expect(result.region).toBe('usw2');
+    expect(result.region).toBe('us-west-2');
+    expect(result.region_short).toBe('usw2');
     expect(result['tags_Project']).toBe('project-name');
     expect(result['tags_ManagedBy']).toBe('terraform');
     expect(result['network_vpc_cidr']).toBe('10.1.0.0/21');
@@ -82,7 +84,8 @@ describe('mergeConfig function', () => {
 
     // Verify nested structure is preserved
     expect(result.env).toBe('dev');
-    expect(result.region).toBe('usw2');
+    expect(result.region).toBe('us-west-2');
+    expect(result.region_short).toBe('usw2');
     expect(result.accountId).toBe('123456789012');
     expect(result.tags).toEqual({
       Project: 'project-name',
@@ -144,8 +147,43 @@ describe('mergeConfig function', () => {
     // Should work fine with valid environment and empty region
     expect(result.env).toBe('dev');
     expect(result.region).toBe('');
+    expect(result.region_short).toBe('');
     expect(result.accountId).toBe('123456789012');
     expect(result.otherField).toBe('some-value');
+  });
+
+  test('should support short region codes and convert to full names', () => {
+    const result = mergeConfig({
+      configFile: './test-cfg.json',
+      env: 'dev',
+      region: 'usw2',  // Short code
+      output: 'flatten',
+      delimiter: '.'
+    });
+
+    // Should convert short code to full region name
+    expect(result.env).toBe('dev');
+    expect(result.region).toBe('us-west-2');  // Full name
+    expect(result.region_short).toBe('usw2');  // Short code
+    expect(result.accountId).toBe('123456789012');
+    expect(result['network.vpc_cidr']).toBe('10.1.0.0/21');
+  });
+
+  test('should support full region names and derive short codes', () => {
+    const result = mergeConfig({
+      configFile: './test-cfg.json',
+      env: 'dev',
+      region: 'us-west-2',  // Full name
+      output: 'flatten',
+      delimiter: '.'
+    });
+
+    // Should keep full region name and derive short code
+    expect(result.env).toBe('dev');
+    expect(result.region).toBe('us-west-2');  // Full name
+    expect(result.region_short).toBe('usw2');  // Derived short code
+    expect(result.accountId).toBe('123456789012');
+    expect(result['network.vpc_cidr']).toBe('10.1.0.0/21');
   });
 
   test('should produce consistent output for repeated calls', () => {
@@ -180,6 +218,7 @@ describe('mergeConfig function', () => {
     // Should have environment-level configs
     expect(result.env).toBe('dev');
     expect(result.region).toBe('');
+    expect(result.region_short).toBe('');
     expect(result.accountId).toBe('123456789012');
     expect(result.otherField).toBe('some-value');
 
@@ -222,7 +261,8 @@ describe('mergeConfig function', () => {
     // The mergedConfig should be a JSON string that parses to our expected structure
     const innerConfig = JSON.parse(parsed.mergedConfig);
     expect(innerConfig.env).toBe('dev');
-    expect(innerConfig.region).toBe('usw2');
+    expect(innerConfig.region).toBe('us-west-2');
+    expect(innerConfig.region_short).toBe('usw2');
     expect(innerConfig.accountId).toBe('123456789012');
     expect(innerConfig['tags.Project']).toBe('project-name');
     expect(innerConfig['network.vpc_cidr']).toBe('10.1.0.0/21');
@@ -237,7 +277,8 @@ describe('mergeConfig function', () => {
 
     // Should directly return the config without terraform wrapper
     expect(parsed.env).toBe('dev');
-    expect(parsed.region).toBe('usw2');
+    expect(parsed.region).toBe('us-west-2');
+    expect(parsed.region_short).toBe('usw2');
     expect(parsed.accountId).toBe('123456789012');
     expect(parsed['tags.Project']).toBe('project-name');
     expect(parsed['network.vpc_cidr']).toBe('10.1.0.0/21');
