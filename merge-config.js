@@ -10,6 +10,16 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
 
     const envSource = config.accounts || config.environments;
 
+    // Validate environment exists
+    if (!envSource || !envSource[env]) {
+        throw new Error(`Environment '${env}' not found in config file`);
+    }
+
+    // Validate region exists if specified
+    if (region && (!envSource[env].regions || !envSource[env].regions[region])) {
+        throw new Error(`Region '${region}' not found in environment '${env}'`);
+    }
+
     function deepMerge(...objects) {
         const result = {};
         for (const obj of objects) {
@@ -76,6 +86,10 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
         ...getGlobalMerged(),
         ...Object.fromEntries(getAllComponentKeys().map(k => [k, getMergedComponentConfig(k)])),
     };
+
+    // Add environment and region to the merged result
+    merged.env = env;
+    merged.region = region;
 
     if (output === 'flatten') {
         return flatten(merged, '', delimiter || '.');

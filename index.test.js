@@ -12,6 +12,8 @@ describe('mergeConfig function', () => {
     });
 
     // Verify specific values that should be present for dev/usw2
+    expect(result.env).toBe('dev');
+    expect(result.region).toBe('usw2');
     expect(result.accountId).toBe('123456789012');
     expect(result.otherField).toBe('some-value');
     expect(result['tags.Project']).toBe('project-name');
@@ -33,6 +35,8 @@ describe('mergeConfig function', () => {
     });
 
     // Verify only defaults are present for prod
+    expect(result.env).toBe('prod');
+    expect(result.region).toBe('');
     expect(result['tags.Project']).toBe('project-name');
     expect(result['tags.ManagedBy']).toBe('terraform');
     expect(result['tfState.bucketName']).toBe('tf-state-bucket');
@@ -55,6 +59,8 @@ describe('mergeConfig function', () => {
     });
 
     // Verify custom delimiter is used
+    expect(result.env).toBe('dev');
+    expect(result.region).toBe('usw2');
     expect(result['tags_Project']).toBe('project-name');
     expect(result['tags_ManagedBy']).toBe('terraform');
     expect(result['network_vpc_cidr']).toBe('10.1.0.0/21');
@@ -75,6 +81,8 @@ describe('mergeConfig function', () => {
     });
 
     // Verify nested structure is preserved
+    expect(result.env).toBe('dev');
+    expect(result.region).toBe('usw2');
     expect(result.accountId).toBe('123456789012');
     expect(result.tags).toEqual({
       Project: 'project-name',
@@ -88,45 +96,28 @@ describe('mergeConfig function', () => {
     expect(result['network.vpc_cidr']).toBeUndefined();
   });
 
-  test('should handle invalid environment gracefully', () => {
-    const result = mergeConfig({
-      configFile: './test-cfg.json',
-      env: 'nonexistent',
-      region: '',
-      output: 'flatten',
-      delimiter: '.'
-    });
-
-    // Should only return defaults when environment doesn't exist
-    expect(result['tags.Project']).toBe('project-name');
-    expect(result['tags.ManagedBy']).toBe('terraform');
-    expect(result['tfState.bucketName']).toBe('tf-state-bucket');
-    expect(result['tfState.region']).toBe('us-west-2');
-    expect(result['network.vpc_cidr']).toBe('10.0.0.0/8');
-
-    expect(result.accountId).toBeUndefined();
-    expect(result.otherField).toBeUndefined();
+  test('should throw error for invalid environment', () => {
+    expect(() => {
+      mergeConfig({
+        configFile: './test-cfg.json',
+        env: 'nonexistent',
+        region: '',
+        output: 'flatten',
+        delimiter: '.'
+      });
+    }).toThrow("Environment 'nonexistent' not found in config file");
   });
 
-  test('should handle invalid region gracefully', () => {
-    const result = mergeConfig({
-      configFile: './test-cfg.json',
-      env: 'dev',
-      region: 'nonexistent',
-      output: 'flatten',
-      delimiter: '.'
-    });
-
-    // Should return env-level config but no region-specific config
-    expect(result.accountId).toBe('123456789012');
-    expect(result.otherField).toBe('some-value');
-    expect(result['tags.Project']).toBe('project-name');
-    expect(result['tags.ManagedBy']).toBe('terraform');
-
-    // Region-specific network config should not be present
-    expect(result['network.vpc_cidr']).toBe('10.0.0.0/8'); // Falls back to default
-    expect(result['network.nat_instance_type']).toBeUndefined();
-    expect(result['network.availability_zones']).toBeUndefined();
+  test('should throw error for invalid region', () => {
+    expect(() => {
+      mergeConfig({
+        configFile: './test-cfg.json',
+        env: 'dev',
+        region: 'nonexistent',
+        output: 'flatten',
+        delimiter: '.'
+      });
+    }).toThrow("Region 'nonexistent' not found in environment 'dev'");
   });
 
   test('should throw error for non-existent config file', () => {
@@ -139,6 +130,22 @@ describe('mergeConfig function', () => {
         delimiter: '.'
       });
     }).toThrow();
+  });
+
+  test('should handle valid environment with empty region', () => {
+    const result = mergeConfig({
+      configFile: './test-cfg.json',
+      env: 'dev',
+      region: '',
+      output: 'flatten',
+      delimiter: '.'
+    });
+
+    // Should work fine with valid environment and empty region
+    expect(result.env).toBe('dev');
+    expect(result.region).toBe('');
+    expect(result.accountId).toBe('123456789012');
+    expect(result.otherField).toBe('some-value');
   });
 
   test('should produce consistent output for repeated calls', () => {
@@ -171,6 +178,8 @@ describe('mergeConfig function', () => {
     });
 
     // Should have environment-level configs
+    expect(result.env).toBe('dev');
+    expect(result.region).toBe('');
     expect(result.accountId).toBe('123456789012');
     expect(result.otherField).toBe('some-value');
 
@@ -201,17 +210,19 @@ describe('mergeConfig function', () => {
 
   test('should handle terraform mode via CLI', () => {
     const { execSync } = require('child_process');
-    const result = execSync('node merge-config.js --config ./test-cfg.json --env dev --region usw2 --output flatten --terraform', 
+    const result = execSync('node merge-config.js --config ./test-cfg.json --env dev --region usw2 --output flatten --terraform',
       { encoding: 'utf8' });
-    
+
     const parsed = JSON.parse(result.trim());
-    
+
     // Should have the terraform wrapper format
     expect(parsed).toHaveProperty('mergedConfig');
     expect(typeof parsed.mergedConfig).toBe('string');
-    
+
     // The mergedConfig should be a JSON string that parses to our expected structure
     const innerConfig = JSON.parse(parsed.mergedConfig);
+    expect(innerConfig.env).toBe('dev');
+    expect(innerConfig.region).toBe('usw2');
     expect(innerConfig.accountId).toBe('123456789012');
     expect(innerConfig['tags.Project']).toBe('project-name');
     expect(innerConfig['network.vpc_cidr']).toBe('10.1.0.0/21');
@@ -219,15 +230,18 @@ describe('mergeConfig function', () => {
 
   test('should handle normal CLI mode without terraform flag', () => {
     const { execSync } = require('child_process');
-    const result = execSync('node merge-config.js --config ./test-cfg.json --env dev --region usw2 --output flatten', 
+    const result = execSync('node merge-config.js --config ./test-cfg.json --env dev --region usw2 --output flatten',
       { encoding: 'utf8' });
-    
+
     const parsed = JSON.parse(result.trim());
-    
+
     // Should directly return the config without terraform wrapper
+    expect(parsed.env).toBe('dev');
+    expect(parsed.region).toBe('usw2');
     expect(parsed.accountId).toBe('123456789012');
     expect(parsed['tags.Project']).toBe('project-name');
     expect(parsed['network.vpc_cidr']).toBe('10.1.0.0/21');
     expect(parsed).not.toHaveProperty('mergedConfig');
   });
+
 });
