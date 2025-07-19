@@ -16,7 +16,7 @@ The combination of these tools allows you to manage complex configurations in a 
   with:
     config: ./deploy-config.json
     env: dev
-    region: usw2
+    region: us-west-2
 
 # This is for demonstration purposes only!
 - name: Display merged config value
@@ -32,7 +32,7 @@ module "merge_config" {
   source      = "git@github.com/myvipstudio/parse-deploy-config.git//terraform/merge_config?ref=main"
   config_json = "${path.root}/deploy-config.json"
   env         = "dev"
-  region      = "usw2"
+  region      = "us-west-2"
 }
 
 locals {
@@ -46,15 +46,15 @@ locals {
 
 Merged JSON:
 ```sh
-node merge-config.js --config ./test-cfg.json --env dev --region usw2 --output json
+node merge-config.js --config ./test-cfg.json --env dev --region us-west-2 --output json
 ```
 
 Flattened output (equivalent to what the GitHub Action does):
 ```sh
-node merge-config.js --config ./test-cfg.json --env dev --region usw2 --output flatten
+node merge-config.js --config ./test-cfg.json --env dev --region us-west-2 --output flatten
 ```
 
 Show output for Terraform (equivalent to what the 'merge_config' module does):
 ```sh
-node merge-config.js --config ./test-cfg.json --env dev --region usw2 --output json --terraform
+node merge-config.js --config ./test-cfg.json --env dev --region us-west-2 --output json --terraform
 ```

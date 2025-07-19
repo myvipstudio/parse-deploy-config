@@ -2,7 +2,7 @@ module "merge_config" {
   source      = "../../merge_config"
   config_json = "../../../test-cfg.json"
   env         = "dev"
-  region      = "usw2"
+  region      = "us-west2"
 }
 
 locals {

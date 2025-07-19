@@ -8,7 +8,7 @@ inputs:
     description: 'Environment (e.g. dev, prod)'
     required: true
   region:
-    description: 'Region (use1, usw2, etc.)'
+    description: 'Region (us-east-1, us-west-2, etc.)'
     required: true
   delimiter:
     description: 'Delimiter for flattening (default .)'
