@@ -15,7 +15,7 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
         'use1': 'us-east-1',
         'use2': 'us-east-2',
         'usw1': 'us-west-1',
-        'uswe2': 'us-west-2',
+        'usw2': 'us-west-2',
         'cac1': 'ca-central-1',
         'euw1': 'eu-west-1',
         'euw2': 'eu-west-2',
@@ -45,11 +45,6 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
     // Validate region exists in mapping if provided
     if (region && !regionMapping[region] && !Object.values(regionMapping).includes(region)) {
         throw new Error(`Region '${region}' is not a valid region code or name`);
-    }
-
-    // Validate region exists in config file if specified
-    if (fullRegion && (!envSource[env].regions || !envSource[env].regions[fullRegion])) {
-        throw new Error(`Region '${fullRegion}' not found in environment '${env}'`);
     }
 
     function deepMerge(...objects) {
