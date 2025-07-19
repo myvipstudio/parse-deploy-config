@@ -42,11 +42,6 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
         throw new Error(`Environment '${env}' not found in config file`);
     }
 
-    // Validate region exists if specified (check using full region name)
-    if (fullRegion && (!envSource[env].regions || !envSource[env].regions[fullRegion])) {
-        throw new Error(`Region '${fullRegion}' not found in environment '${env}'`);
-    }
-
     function deepMerge(...objects) {
         const result = {};
         for (const obj of objects) {

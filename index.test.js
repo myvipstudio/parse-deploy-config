@@ -111,16 +111,31 @@ describe('mergeConfig function', () => {
     }).toThrow("Environment 'nonexistent' not found in config file");
   });
 
-  test('should throw error for invalid region', () => {
+  test('should not throw error if region is valid but does not exist', () => {
     expect(() => {
       mergeConfig({
         configFile: './test-cfg.json',
         env: 'dev',
-        region: 'nonexistent',
+        region: 'use1', // Valid region code but not in config
         output: 'flatten',
         delimiter: '.'
       });
-    }).toThrow("Region 'nonexistent' not found in environment 'dev'");
+    }).not.toThrow();
+
+    // Should return environment defaults when region doesn't exist
+    const result = mergeConfig({
+      configFile: './test-cfg.json',
+      env: 'dev',
+      region: 'use1',
+      output: 'flatten',
+      delimiter: '.'
+    });
+
+    expect(result.env).toBe('dev');
+    expect(result.region).toBe('us-east-1'); // Should convert short code to full name
+    expect(result.region_short).toBe('use1');
+    expect(result.accountId).toBe('123456789012'); // From environment config
+    expect(result['network.vpc_cidr']).toBe('10.0.0.0/8'); // From defaults (no region-specific override)
   });
 
   test('should throw error for non-existent config file', () => {
