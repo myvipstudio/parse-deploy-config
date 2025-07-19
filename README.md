@@ -1,10 +1,19 @@
 # Parse Deploy Config
 
-Reusable configuration merging tools for GitHub Actions and Terraform.
+Reusable configuration merging tools to define deployment configurations across different environments and regions, with
+support for both GitHub Actions and Terraform as well as a CLI tool for local usage.
 
-These tools are designed to merge a hierarchical JSON configuration file with environment and region overrides, returning the configuration that is active for a specified environment and region combination.
+These tools are designed to merge a hierarchical JSON configuration file with environment and region overrides,
+returning the configuration that is active for a specified environment and region combination.
 
-The combination of these tools allows you to manage complex configurations in a structured way, making it easier to handle different environments and regions without duplicating configuration data, and to easily share the same deployment configuration across GitHub Actions workflows and Terraform modules.
+The combination of these tools allows you to manage complex configurations in a structured way, making it easier to
+handle different environments and regions without duplicating configuration data, and to easily share the same
+deployment configuration across multiple platforms like GitHub Actions and Terraform and keeping this configuration
+in files that are source controlled alongside your codebase. As always, you should ensure that sensitive data or secrets
+are not included in any configuration files that are checked into source control.
+
+These tools are designed to handle JSON5 configuration files, which allows for comments and more flexible syntax
+compared to standard JSON.
 
 
 ## GitHub Actions Usage
@@ -18,14 +27,19 @@ The combination of these tools allows you to manage complex configurations in a 
     env: dev
     region: us-west-2
 
-# This is for demonstration purposes only!
-- name: Display merged config value
+- name: Show merged config value
   run: echo "Deploy with NAT instance type: ${{ steps.read_deployment_config.outputs['network.nat_instance_type'] }}"
-
 ```
+
+Note that the output from the parse-deploy-config action returns a flattened version of the merged configuration, where
+nested properties are represented as keys with dot notation. Because of this, you must use bracket notation to access
+these values in from the 'outputs' object, as shown in the example above.
 
 
 ## Terraform Usage
+
+This module is designed to handle configuration for the **root** module of a Terraform project. For **child** (shared)
+modules, any configuration data should be passed in as normal Terraform variables.
 
 ```hcl
 module "merge_config" {
@@ -42,14 +56,14 @@ locals {
 ```
 
 
-## Local Usage
+## Local CLI Usage
 
 Merged JSON:
 ```sh
 node merge-config.js --config ./test-cfg.json --env dev --region us-west-2 --output json
 ```
 
-Flattened output (equivalent to what the GitHub Action does):
+Flattened output (equivalent to what the 'parse-deploy-config' GitHub Action does):
 ```sh
 node merge-config.js --config ./test-cfg.json --env dev --region us-west-2 --output flatten
 ```

@@ -2,9 +2,11 @@ const mergeConfig = require('./merge-config');
 
 describe('mergeConfig function', () => {
 
+  const DefaultTestConfigFile = './test-cfg.json5';
+
   test('should correctly parse existing environment with regional overrides', () => {
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: 'usw2',
       output: 'flatten',
@@ -28,7 +30,7 @@ describe('mergeConfig function', () => {
 
   test('should correctly parse prod environment (defaults only)', () => {
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'prod',
       region: '',
       output: 'flatten',
@@ -52,7 +54,7 @@ describe('mergeConfig function', () => {
 
   test('should use custom delimiter', () => {
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: 'usw2',
       output: 'flatten',
@@ -75,7 +77,7 @@ describe('mergeConfig function', () => {
 
   test('should return non-flattened object when output is not "flatten"', () => {
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: 'usw2',
       output: 'object',
@@ -102,7 +104,7 @@ describe('mergeConfig function', () => {
   test('should throw error for invalid environment', () => {
     expect(() => {
       mergeConfig({
-        configFile: './test-cfg.json',
+        configFile: DefaultTestConfigFile,
         env: 'nonexistent',
         region: '',
         output: 'flatten',
@@ -114,7 +116,7 @@ describe('mergeConfig function', () => {
   test('should throw error for invalid region code', () => {
     expect(() => {
       mergeConfig({
-        configFile: './test-cfg.json',
+        configFile: DefaultTestConfigFile,
         env: 'dev',
         region: 'invalid-region',
         output: 'flatten',
@@ -126,7 +128,7 @@ describe('mergeConfig function', () => {
   test('should not throw error if region is valid but does not exist in config file', () => {
     expect(() => {
       mergeConfig({
-        configFile: './test-cfg.json',
+        configFile: DefaultTestConfigFile,
         env: 'dev',
         region: 'us-east-1', // Valid region code but not in config
         output: 'flatten',
@@ -136,7 +138,7 @@ describe('mergeConfig function', () => {
 
     // Should return environment defaults when region doesn't exist
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: 'use1',
       output: 'flatten',
@@ -164,7 +166,7 @@ describe('mergeConfig function', () => {
 
   test('should handle valid environment with empty region', () => {
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: '',
       output: 'flatten',
@@ -181,7 +183,7 @@ describe('mergeConfig function', () => {
 
   test('should support short region codes and convert to full names', () => {
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: 'usw2',  // Short code
       output: 'flatten',
@@ -198,7 +200,7 @@ describe('mergeConfig function', () => {
 
   test('should support full region names and derive short codes', () => {
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: 'us-west-2',  // Full name
       output: 'flatten',
@@ -215,7 +217,7 @@ describe('mergeConfig function', () => {
 
   test('should produce consistent output for repeated calls', () => {
     const result1 = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: 'usw2',
       output: 'flatten',
@@ -223,7 +225,7 @@ describe('mergeConfig function', () => {
     });
 
     const result2 = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: 'usw2',
       output: 'flatten',
@@ -235,7 +237,7 @@ describe('mergeConfig function', () => {
 
   test('should handle dev environment without region correctly', () => {
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: '',
       output: 'flatten',
@@ -261,7 +263,7 @@ describe('mergeConfig function', () => {
 
   test('should ensure no undefined values in dev/usw2 output', () => {
     const result = mergeConfig({
-      configFile: './test-cfg.json',
+      configFile: DefaultTestConfigFile,
       env: 'dev',
       region: 'usw2',
       output: 'flatten',

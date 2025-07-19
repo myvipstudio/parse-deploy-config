@@ -2,10 +2,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const JSON5 = require('json5');
 
 function mergeConfig({ configFile, env, region, output, delimiter }) {
     const config = typeof configFile === 'string'
-        ? JSON.parse(fs.readFileSync(path.resolve(configFile), 'utf8'))
+        ? JSON5.parse(fs.readFileSync(path.resolve(configFile), 'utf8'))
         : configFile;
 
     const envSource = config.accounts || config.environments;
