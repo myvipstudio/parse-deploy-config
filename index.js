@@ -43,7 +43,7 @@ function exposeJqJson5() {
 `#!/usr/bin/env bash
 set -eo pipefail
 file="$1"; shift
-node "${actionRoot}/dist/index.js" --parse "$file" | jq "$@"
+node "${actionRoot}/index.js" --parse "$file" | jq "$@"
 `);
   fs.chmodSync(wrapper, 0o755);
   core.addPath(tempBin);
