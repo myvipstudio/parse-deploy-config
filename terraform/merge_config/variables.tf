@@ -13,3 +13,9 @@ variable "region" {
   type        = string
   default     = ""
 }
+
+variable "debug" {
+  description = "Enable debug output to stderr for troubleshooting"
+  type        = bool
+  default     = false
+}

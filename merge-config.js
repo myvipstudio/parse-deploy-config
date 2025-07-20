@@ -198,9 +198,9 @@ function flatten(obj, prefix = '', delimiter = '.') {
 
 
 if (require.main === module) {
-    // CLI: --config <path> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform] [--ephemeral-branch-prefix <prefix>] [--branch-name <name>]
+    // CLI: --config <path> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform] [--ephemeral-branch-prefix <prefix>] [--branch-name <name>] [--debug]
     const args = process.argv.slice(2);
-    let configFile, env, region, output = 'json', delimiter = '.', tfMode = false, ephemeralBranchPrefix, branchName, component;
+    let configFile, env, region, output = 'json', delimiter = '.', tfMode = false, ephemeralBranchPrefix, branchName, component, debugMode = false;
 
     for (let i = 0; i < args.length; i++) {
         switch (args[i]) {
@@ -235,6 +235,9 @@ if (require.main === module) {
             case '--component':
                 component = args[++i];
                 break;
+            case '--debug':
+                debugMode = true;
+                break;
             default:
                 console.error(`Unrecognized argument: ${args[i]}`);
                 process.exit(1);
@@ -242,13 +245,20 @@ if (require.main === module) {
     }
 
     if (!configFile || !env) {
-        console.error('Usage: merge-config.js --config <configFile> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform] [--ephemeral-branch-prefix <prefix>] [--branch-name <name>]');
+        console.error('Usage: merge-config.js --config <configFile> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform] [--ephemeral-branch-prefix <prefix>] [--branch-name <name>] [--debug]');
         process.exit(1);
     }
 
     const result = mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, branchName, component });
 
     if (tfMode) {
+        // If debug mode is enabled, output human-readable config to stderr for visibility
+        if (debugMode) {
+            console.error('=== DEBUG: Merged Configuration ===');
+            console.error(JSON.stringify(result, null, 2));
+            console.error('=== END DEBUG ===');
+        }
+
         // For Terraform, output as { "mergedConfig": <object> }
         // Terraform needs the mergedConfig value to be a string, which it will then parse as JSON
         console.log(JSON.stringify({ mergedConfig: JSON.stringify(result) }));

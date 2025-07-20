@@ -1,5 +1,5 @@
 data "external" "merged_config" {
-  program = [
+  program = concat([
     "node",
     "${path.module}/dist/index.js",
     "--config", var.config_json,
@@ -7,7 +7,7 @@ data "external" "merged_config" {
     "--region", var.region,
     "--output", "json",
     "--terraform"
-  ]
+  ], var.debug ? ["--debug"] : [])
 }
 
 locals {
