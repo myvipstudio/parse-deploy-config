@@ -56,6 +56,7 @@ try {
     const region = core.getInput('region', { required: true });
     const delimiter = core.getInput('delimiter') || '.';
     const ephemeralBranchPrefix = core.getInput('ephemeral-branch-prefix');
+    const displayOutputs = core.getInput('display-outputs') === 'true';
 
     const flat = mergeConfig({
         configFile,
@@ -66,6 +67,13 @@ try {
         ephemeralBranchPrefix,
         branchName: process.env.GITHUB_REF_NAME
     });
+
+    // Display outputs if requested
+    if (displayOutputs) {
+        console.log('=== Merged Configuration ===');
+        console.log(JSON.stringify(flat, null, 2));
+        console.log('============================');
+    }
 
     for (const [k, v] of Object.entries(flat)) {
         core.setOutput(k, v);

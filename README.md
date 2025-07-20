@@ -35,6 +35,32 @@ Note that the output from the parse-deploy-config action returns a flattened ver
 nested properties are represented as keys with dot notation. Because of this, you must use bracket notation to access
 these values in from the 'outputs' object, as shown in the example above.
 
+### GitHub Action Inputs
+
+| Input                     | Description                                                                                     | Required | Default      |
+|---------------------------|-------------------------------------------------------------------------------------------------|----------|--------------|
+| `config`                  | Path to config JSON file                                                                        | Yes      | -            |
+| `env`                     | Environment (e.g. dev, prod)                                                                    | Yes      | -            |
+| `region`                  | Region (us-east-1, us-west-2, etc.)                                                             | Yes      | -            |
+| `ephemeral-branch-prefix` | Prefix for branches associated with ephemeral environments (set to empty string to disable)     | No       | `ephemeral/` |
+| `delimiter`               | Delimiter for flattening nested properties                                                      | No       | `.`          |
+| `display-outputs`         | Display the merged output for the specified environment/region to the console                   | No       | `true`       |
+
+### Example with all options
+
+```yaml
+- name: Read Deployment Configuration with Debug Output
+  id: read_deployment_config
+  uses: myvipstudio/parse-deploy-config@main
+  with:
+    config: ./deploy-config.json5
+    env: dev
+    region: us-west-2
+    ephemeral-branch-prefix: 'feature/'
+    delimiter: '_'
+    display-outputs: 'true'
+```
+
 ### jq-json5 Utility
 
 After running the parse-deploy-config action, a `jq-json5` utility is made available in the GitHub Actions runner's PATH.

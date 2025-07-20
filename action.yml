@@ -18,6 +18,10 @@ inputs:
     description: 'Delimiter for flattening (default .)'
     required: false
     default: '.'
+  display-outputs:
+    description: 'Display the merged output for the specified environment/region to the console (default false)'
+    required: false
+    default: 'true'
 
 runs:
   using: 'node20'
