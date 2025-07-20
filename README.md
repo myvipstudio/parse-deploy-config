@@ -31,10 +31,6 @@ compared to standard JSON.
   run: echo "Deploy with NAT instance type: ${{ steps.read_deployment_config.outputs['network.nat_instance_type'] }}"
 ```
 
-Note that the output from the parse-deploy-config action returns a flattened version of the merged configuration, where
-nested properties are represented as keys with dot notation. Because of this, you must use bracket notation to access
-these values in from the 'outputs' object, as shown in the example above.
-
 ### GitHub Action Inputs
 
 | Input                     | Description                                                                                     | Required | Default      |
@@ -45,20 +41,57 @@ these values in from the 'outputs' object, as shown in the example above.
 | `ephemeral-branch-prefix` | Prefix for branches associated with ephemeral environments (set to empty string to disable)     | No       | `ephemeral/` |
 | `delimiter`               | Delimiter for flattening nested properties                                                      | No       | `.`          |
 | `display-outputs`         | Display the merged output for the specified environment/region to the console                   | No       | `true`       |
+| `component`               | Specific component to hoist to root level in the output (e.g. tfState, network)                 | No       | -            |
+
 
 ### Example with all options
 
 ```yaml
-- name: Read Deployment Configuration with Debug Output
+- name: Read Deployment Configuration Basic Example
   id: read_deployment_config
   uses: myvipstudio/parse-deploy-config@main
   with:
     config: ./deploy-config.json5
     env: dev
     region: us-west-2
-    ephemeral-branch-prefix: 'feature/'
-    delimiter: '_'
-    display-outputs: 'true'
+
+- name: Show Merged Values
+  run: |
+    echo "NAT Instance Type: ${{ steps.read_deployment_config.outputs['network.nat_instance_type'] }}"
+    echo "VPC CIDR: ${{ steps.read_deployment_config.outputs['network.vpc_cidr'] }}"
+```
+
+Note that the output from the parse-deploy-config action returns a flattened version of the merged configuration, where
+nested properties are represented as keys with dot notation. Because of this, you must use bracket notation to access
+these values in from the 'outputs' object, as shown in the example above.
+
+### Component Hoisting
+
+The `component` parameter allows you to hoist a specific component to the root level of the output, which is useful when
+you only need configuration for a particular component (like `service`, `network`, `persistence`, etc.) rather than the
+entire merged configuration.
+
+When using component hoisting:
+- Only the specified component's properties are included at the root level
+- Environment metadata (`env_name`, `env_config_name`, `region`, `region_short`, `is_ephemeral`) is preserved
+- Other components are excluded from the output
+
+#### Example: Getting only terraform state configuration
+
+```yaml
+- name: Get TF State Configuration
+  id: tf_state_config
+  uses: myvipstudio/parse-deploy-config@main
+  with:
+    config: ./deploy-config.json5
+    env: dev
+    region: us-west-2
+    component: tfState
+
+- name: Configure Terraform Backend
+  run: |
+    echo "bucket=${{ steps.tf_state_config.outputs.bucketName }}" >> $GITHUB_OUTPUT
+    echo "region=${{ steps.tf_state_config.outputs.region }}" >> $GITHUB_OUTPUT
 ```
 
 ### jq-json5 Utility
@@ -113,4 +146,14 @@ node merge-config.js --config ./test-cfg.json5 --env dev --region us-west-2 --ou
 Show output for Terraform (equivalent to what the 'merge_config' module does):
 ```sh
 node merge-config.js --config ./test-cfg.json5 --env dev --region us-west-2 --output json --terraform
+```
+
+Get only a specific component (e.g., tfState):
+```sh
+node merge-config.js --config ./test-cfg.json5 --env dev --region us-west-2 --component tfState
+```
+
+Get only network configuration flattened:
+```sh
+node merge-config.js --config ./test-cfg.json5 --env dev --region us-west-2 --component network --output flatten
 ```

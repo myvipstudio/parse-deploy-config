@@ -57,6 +57,7 @@ try {
     const delimiter = core.getInput('delimiter') || '.';
     const ephemeralBranchPrefix = core.getInput('ephemeral-branch-prefix');
     const displayOutputs = core.getInput('display-outputs') === 'true';
+    const component = core.getInput('component') || null;
 
     const flat = mergeConfig({
         configFile,
@@ -65,7 +66,8 @@ try {
         output: 'flatten',
         delimiter,
         ephemeralBranchPrefix,
-        branchName: process.env.GITHUB_REF_NAME
+        branchName: process.env.GITHUB_REF_NAME,
+        component
     });
 
     // Display outputs if requested

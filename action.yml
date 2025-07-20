@@ -22,6 +22,9 @@ inputs:
     description: 'Display the merged output for the specified environment/region to the console (default false)'
     required: false
     default: 'true'
+  component:
+    description: 'Specific component that should be returned from the config (default: all components)'
+    required: false
 
 runs:
   using: 'node20'

@@ -27,7 +27,7 @@ const AwsRegionMapping = {
     'sae1': 'sa-east-1'
 };
 
-function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, branchName }) {
+function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, branchName, component }) {
     const config = typeof configFile === 'string'
         ? JSON5.parse(fs.readFileSync(path.resolve(configFile), 'utf8'))
         : configFile;
@@ -156,17 +156,31 @@ function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBran
         ...Object.fromEntries(getAllComponentKeys().map(k => [k, getMergedComponentConfig(k)])),
     };
 
-    // Add environment and region to the merged result
-    merged.env_name = envName;
-    merged.env_config_name = envConfigName;
-    merged.region = fullRegion || '';
-    merged.region_short = shortRegion || '';
-    merged.is_ephemeral = isEphemeral;
+    // Handle component hoisting if specified
+    let finalResult = merged;
+    if (component) {
+        // Check if the component exists in the merged config
+        if (merged[component] && typeof merged[component] === 'object' && !Array.isArray(merged[component])) {
+            // Hoist the specified component to root level
+            finalResult = {
+                ...merged[component],
+            };
+        } else {
+            throw new Error(`Component '${component}' not found or is not a valid component in the merged configuration`);
+        }
+    }
+
+    // Add common dynamic metadata to the merged result (environment, region, etc)
+    finalResult.env_name = envName;
+    finalResult.env_config_name = envConfigName;
+    finalResult.region = fullRegion || '';
+    finalResult.region_short = shortRegion || '';
+    finalResult.is_ephemeral = isEphemeral;
 
     if (output === 'flatten') {
-        return flatten(merged, '', delimiter || '.');
+        return flatten(finalResult, '', delimiter || '.');
     }
-    return merged;
+    return finalResult;
 }
 
 function flatten(obj, prefix = '', delimiter = '.') {
@@ -186,7 +200,7 @@ function flatten(obj, prefix = '', delimiter = '.') {
 if (require.main === module) {
     // CLI: --config <path> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform] [--ephemeral-branch-prefix <prefix>] [--branch-name <name>]
     const args = process.argv.slice(2);
-    let configFile, env, region, output = 'json', delimiter = '.', tfMode = false, ephemeralBranchPrefix, branchName;
+    let configFile, env, region, output = 'json', delimiter = '.', tfMode = false, ephemeralBranchPrefix, branchName, component;
 
     for (let i = 0; i < args.length; i++) {
         switch (args[i]) {
@@ -218,6 +232,9 @@ if (require.main === module) {
             case '--branch-name':
                 branchName = args[++i];
                 break;
+            case '--component':
+                component = args[++i];
+                break;
             default:
                 console.error(`Unrecognized argument: ${args[i]}`);
                 process.exit(1);
@@ -229,7 +246,7 @@ if (require.main === module) {
         process.exit(1);
     }
 
-    const result = mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, branchName });
+    const result = mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, branchName, component });
 
     if (tfMode) {
         // For Terraform, output as { "mergedConfig": <object> }
