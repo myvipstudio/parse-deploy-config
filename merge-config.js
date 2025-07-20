@@ -69,12 +69,8 @@ function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBran
                         // This is an ephemeral environment
                         const branchEnvName = branchName.substring(ephemeralBranchPrefix.length);
 
-                        console.log(`!!! envName = ${envName}, branchEnvName = ${branchEnvName}, branchName = ${branchName}`);
-
                         // Verify that the input envName matches the branch name with or without the prefix
                         if (envName !== branchEnvName && envName !== branchName) {
-                            console.log(`!!! Ephemeral environment name '${envName}' does not match the branch name '${branchName}'`)
-
                             throw new Error(`Ephemeral environment name '${envName}' does not match the branch name '${branchName}'`);
                         }
 
