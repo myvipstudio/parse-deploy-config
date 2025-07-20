@@ -257,13 +257,20 @@ if (require.main === module) {
             console.error('=== DEBUG: Merged Configuration ===');
             console.error(JSON.stringify(result, null, 2));
             console.error('=== END DEBUG ===');
+
+            // Also write to a debug file for easier viewing when called from Terraform
+            try {
+                const debugFile = path.join(process.cwd(), 'merge-config-debug.json');
+                fs.writeFileSync(debugFile, JSON.stringify(result, null, 2));
+                console.error(`=== DEBUG: Also written to ${debugFile} ===`);
+            } catch (e) {
+                console.error(`=== DEBUG: Could not write debug file: ${e.message} ===`);
+            }
         }
 
         // For Terraform, output as { "mergedConfig": <object> }
         // Terraform needs the mergedConfig value to be a string, which it will then parse as JSON
-        console.log(JSON.stringify({ mergedConfig: JSON.stringify(result) }));
-
-    } else {
+        console.log(JSON.stringify({ mergedConfig: JSON.stringify(result) }));    } else {
         // Pretty JSON to stdout
         console.log(JSON.stringify(result, null, 2));
     }
