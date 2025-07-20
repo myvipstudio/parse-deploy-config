@@ -14,7 +14,7 @@ describe('mergeConfig function', () => {
     });
 
     // Verify specific values that should be present for dev/usw2
-    expect(result.env).toBe('dev');
+    expect(result.env_name).toBe('dev');
     expect(result.region).toBe('us-west-2');
     expect(result.region_short).toBe('usw2');
     expect(result.accountId).toBe('123456789012');
@@ -38,7 +38,7 @@ describe('mergeConfig function', () => {
     });
 
     // Verify only defaults are present for prod
-    expect(result.env).toBe('prod');
+    expect(result.env_name).toBe('prod');
     expect(result.region).toBe('');
     expect(result['tags.Project']).toBe('project-name');
     expect(result['tags.ManagedBy']).toBe('terraform');
@@ -62,7 +62,7 @@ describe('mergeConfig function', () => {
     });
 
     // Verify custom delimiter is used
-    expect(result.env).toBe('dev');
+    expect(result.env_name).toBe('dev');
     expect(result.region).toBe('us-west-2');
     expect(result.region_short).toBe('usw2');
     expect(result['tags_Project']).toBe('project-name');
@@ -85,7 +85,7 @@ describe('mergeConfig function', () => {
     });
 
     // Verify nested structure is preserved
-    expect(result.env).toBe('dev');
+    expect(result.env_name).toBe('dev');
     expect(result.region).toBe('us-west-2');
     expect(result.region_short).toBe('usw2');
     expect(result.accountId).toBe('123456789012');
@@ -145,7 +145,7 @@ describe('mergeConfig function', () => {
       delimiter: '.'
     });
 
-    expect(result.env).toBe('dev');
+    expect(result.env_name).toBe('dev');
     expect(result.region).toBe('us-east-1'); // Should convert short code to full name
     expect(result.region_short).toBe('use1');
     expect(result.accountId).toBe('123456789012'); // From environment config
@@ -174,7 +174,7 @@ describe('mergeConfig function', () => {
     });
 
     // Should work fine with valid environment and empty region
-    expect(result.env).toBe('dev');
+    expect(result.env_name).toBe('dev');
     expect(result.region).toBe('');
     expect(result.region_short).toBe('');
     expect(result.accountId).toBe('123456789012');
@@ -191,7 +191,7 @@ describe('mergeConfig function', () => {
     });
 
     // Should convert short code to full region name
-    expect(result.env).toBe('dev');
+    expect(result.env_name).toBe('dev');
     expect(result.region).toBe('us-west-2');  // Full name
     expect(result.region_short).toBe('usw2');  // Short code
     expect(result.accountId).toBe('123456789012');
@@ -208,7 +208,7 @@ describe('mergeConfig function', () => {
     });
 
     // Should keep full region name and derive short code
-    expect(result.env).toBe('dev');
+    expect(result.env_name).toBe('dev');
     expect(result.region).toBe('us-west-2');  // Full name
     expect(result.region_short).toBe('usw2');  // Derived short code
     expect(result.accountId).toBe('123456789012');
@@ -245,7 +245,7 @@ describe('mergeConfig function', () => {
     });
 
     // Should have environment-level configs
-    expect(result.env).toBe('dev');
+    expect(result.env_name).toBe('dev');
     expect(result.region).toBe('');
     expect(result.region_short).toBe('');
     expect(result.accountId).toBe('123456789012');
@@ -278,7 +278,7 @@ describe('mergeConfig function', () => {
 
   test('should handle terraform mode via CLI', () => {
     const { execSync } = require('child_process');
-    const result = execSync('node merge-config.js --config ./test-cfg.json --env dev --region usw2 --output flatten --terraform',
+    const result = execSync('node merge-config.js --config ./test-cfg.json5 --env dev --region usw2 --output flatten --terraform',
       { encoding: 'utf8' });
 
     const parsed = JSON.parse(result.trim());
@@ -289,7 +289,7 @@ describe('mergeConfig function', () => {
 
     // The mergedConfig should be a JSON string that parses to our expected structure
     const innerConfig = JSON.parse(parsed.mergedConfig);
-    expect(innerConfig.env).toBe('dev');
+    expect(innerConfig.env_name).toBe('dev');
     expect(innerConfig.region).toBe('us-west-2');
     expect(innerConfig.region_short).toBe('usw2');
     expect(innerConfig.accountId).toBe('123456789012');
@@ -299,19 +299,294 @@ describe('mergeConfig function', () => {
 
   test('should handle normal CLI mode without terraform flag', () => {
     const { execSync } = require('child_process');
-    const result = execSync('node merge-config.js --config ./test-cfg.json --env dev --region usw2 --output flatten',
+    const result = execSync('node merge-config.js --config ./test-cfg.json5 --env dev --region usw2 --output flatten',
       { encoding: 'utf8' });
 
     const parsed = JSON.parse(result.trim());
 
     // Should directly return the config without terraform wrapper
-    expect(parsed.env).toBe('dev');
+    expect(parsed.env_name).toBe('dev');
     expect(parsed.region).toBe('us-west-2');
     expect(parsed.region_short).toBe('usw2');
     expect(parsed.accountId).toBe('123456789012');
     expect(parsed['tags.Project']).toBe('project-name');
     expect(parsed['network.vpc_cidr']).toBe('10.1.0.0/21');
     expect(parsed).not.toHaveProperty('mergedConfig');
+  });
+
+});
+
+describe('ephemeral environment functionality', () => {
+  const DefaultTestConfigFile = './test-cfg.json5';
+
+  test('should return normal environment when ephemeral prefix is not specified', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'dev',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: undefined,
+      branchName: 'ephemeral/test-branch'
+    });
+
+    expect(result.env_name).toBe('dev');
+    expect(result.env_config_name).toBe('dev');
+    expect(result.is_ephemeral).toBe(false);
+  });
+
+  test('should return normal environment when ephemeral prefix is empty', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'dev',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: '',
+      branchName: 'ephemeral/test-branch'
+    });
+
+    expect(result.env_name).toBe('dev');
+    expect(result.env_config_name).toBe('dev');
+    expect(result.is_ephemeral).toBe(false);
+  });
+
+  test('should return normal environment when ephemeral prefix is only whitespace', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'dev',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: '   ',
+      branchName: 'ephemeral/test-branch'
+    });
+
+    expect(result.env_name).toBe('dev');
+    expect(result.env_config_name).toBe('dev');
+    expect(result.is_ephemeral).toBe(false);
+  });
+
+  test('should return normal environment when known environment exists even if branch name matches ephemeral prefix', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'dev',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/test-branch'
+    });
+
+    expect(result.env_name).toBe('dev');
+    expect(result.env_config_name).toBe('dev');
+    expect(result.is_ephemeral).toBe(false);
+  });
+
+  test('should throw error if input unprefixed ephemeral env does not match branchName', () => {
+    expect(() => mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'nonexistent',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/test-feature'
+    })).toThrow("Ephemeral environment name 'nonexistent' does not match the branch name 'ephemeral/test-feature'");
+  });
+
+  test('should throw error if input prefixed ephemeral env prefix does not match branchName', () => {
+    expect(() => mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'feature/test-feature',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/test-feature'
+    })).toThrow("Ephemeral environment name 'feature/test-feature' does not match the branch name 'ephemeral/test-feature'");
+  });
+
+  test('should throw error if input prefixed ephemeral env suffix does not match branchName', () => {
+    expect(() => mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'ephemeral/other-feature',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/test-feature'
+    })).toThrow("Ephemeral environment name 'ephemeral/other-feature' does not match the branch name 'ephemeral/test-feature'");
+  });
+
+  test('should handle ephemeral environment with valid branch name matching input env without prefix', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'test-feature',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/test-feature'
+    });
+
+    expect(result.env_name).toBe('test-feature');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
+    expect(result.accountId).toBe('999999999999');
+  });
+
+  test('should handle ephemeral environment with valid branch name matching input env with prefix', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'ephemeral/test-feature',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/test-feature'
+    });
+
+    expect(result.env_name).toBe('test-feature');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
+    expect(result.accountId).toBe('999999999999');
+  });
+
+  test('should handle ephemeral environment with complex branch name', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'feature-123-test',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/feature-123-test'
+    });
+
+    expect(result.env_name).toBe('feature-123-test');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
+  });
+
+  test('should handle custom ephemeral prefix', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'my-feature',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'preview/',
+      branchName: 'preview/my-feature'
+    });
+
+    expect(result.env_name).toBe('my-feature');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
+  });
+
+  test('should throw error when environment not found and no branch name', () => {
+    expect(() => {
+      mergeConfig({
+        configFile: DefaultTestConfigFile,
+        env: 'nonexistent',
+        region: 'usw2',
+        output: 'flatten',
+        delimiter: '.',
+        ephemeralBranchPrefix: 'ephemeral/',
+        branchName: undefined
+      });
+    }).toThrow("Environment 'nonexistent' not found in config file");
+  });
+
+  test('should throw error when environment not found and branch name is null', () => {
+    expect(() => {
+      mergeConfig({
+        configFile: DefaultTestConfigFile,
+        env: 'nonexistent',
+        region: 'usw2',
+        output: 'flatten',
+        delimiter: '.',
+        ephemeralBranchPrefix: 'ephemeral/',
+        branchName: null
+      });
+    }).toThrow("Environment 'nonexistent' not found in config file");
+  });
+
+  test('should throw error when branch name does not match ephemeral pattern', () => {
+    expect(() => {
+      mergeConfig({
+        configFile: DefaultTestConfigFile,
+        env: 'nonexistent',
+        region: 'usw2',
+        output: 'flatten',
+        delimiter: '.',
+        ephemeralBranchPrefix: 'ephemeral/',
+        branchName: 'main'
+      });
+    }).toThrow("Ephemeral environment branches must follow the format 'ephemeral/<name>' where <name> contains only lowercase letters, numbers, hyphens, and underscores. Current branch: main");
+  });
+
+  test('should handle ephemeral environment with underscores in branch name', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'feature_with_underscores',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/feature_with_underscores'
+    });
+
+    expect(result.env_name).toBe('feature_with_underscores');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
+  });
+
+  test('should throw error when branch name has uppercase characters', () => {
+    expect(() => {
+      mergeConfig({
+        configFile: DefaultTestConfigFile,
+        env: 'nonexistent',
+        region: 'usw2',
+        output: 'flatten',
+        delimiter: '.',
+        ephemeralBranchPrefix: 'ephemeral/',
+        branchName: 'ephemeral/FeatureTest'
+      });
+    }).toThrow("Ephemeral environment branches must follow the format 'ephemeral/<name>' where <name> contains only lowercase letters, numbers, hyphens, and underscores. Current branch: ephemeral/FeatureTest");
+  });
+
+  test('should handle prefix with special regex characters', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'test-branch',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'preview.',
+      branchName: 'preview.test-branch'
+    });
+
+    expect(result.env_name).toBe('test-branch');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
+  });
+
+  test('should handle prefix with multiple special characters', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'my-feature',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'test[branch]/',
+      branchName: 'test[branch]/my-feature'
+    });
+
+    expect(result.env_name).toBe('my-feature');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
   });
 
 });

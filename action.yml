@@ -10,6 +10,10 @@ inputs:
   region:
     description: 'Region (us-east-1, us-west-2, etc.)'
     required: true
+  ephemeral-branch-prefix:
+    description: 'Prefix for branches associated with ephemeral environments (default: ephemeral/ - set to empty string to disable)'
+    required: false
+    default: 'ephemeral/'
   delimiter:
     description: 'Delimiter for flattening (default .)'
     required: false

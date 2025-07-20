@@ -15,6 +15,31 @@
   },
   "environments": {
     "prod": { },
+    "ephemeral": {
+      "accountId": "999999999999",
+      "name": "Ephemeral Environment",
+      "regions": {
+        "us-west-2": {
+          "name": "Ephemeral (us-west-2)",
+          "network": {
+            "vpc_cidr": "10.2.0.0/21",
+            "availability_zones": [
+              "us-west-2a",
+              "us-west-2b"
+            ],
+            "public_subnet_cidrs": [
+              "10.2.0.0/24",
+              "10.2.1.0/24"
+            ],
+            "private_subnet_cidrs": [
+              "10.2.4.0/24",
+              "10.2.5.0/24"
+            ],
+            "nat_instance_type": "t4g.nano"
+          }
+        }
+      }
+    },
     "dev": {
       "accountId": "123456789012",
       "otherField": "some-value",

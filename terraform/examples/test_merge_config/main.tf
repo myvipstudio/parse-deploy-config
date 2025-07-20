@@ -1,6 +1,6 @@
 module "merge_config" {
   source      = "../../merge_config"
-  config_json = "../../../test-cfg.json"
+  config_json = "../../../test-cfg.json5"
   env         = "dev"
   region      = "us-west2"
 }

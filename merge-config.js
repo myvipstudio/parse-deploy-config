@@ -4,48 +4,93 @@ const fs = require('fs');
 const path = require('path');
 const JSON5 = require('json5');
 
-function mergeConfig({ configFile, env, region, output, delimiter }) {
+// Region mapping: short code -> full name
+const AwsRegionMapping = {
+    'use1': 'us-east-1',
+    'use2': 'us-east-2',
+    'usw1': 'us-west-1',
+    'usw2': 'us-west-2',
+    'cac1': 'ca-central-1',
+    'euw1': 'eu-west-1',
+    'euw2': 'eu-west-2',
+    'euw3': 'eu-west-3',
+    'euc1': 'eu-central-1',
+    'eun1': 'eu-north-1',
+    'aps1': 'ap-south-1',
+    'apne1': 'ap-northeast-1',
+    'apne2': 'ap-northeast-2',
+    'apne3': 'ap-northeast-3',
+    'apse1': 'ap-southeast-1',
+    'apse2': 'ap-southeast-2',
+    'apse3': 'ap-southeast-3',
+    'ape1': 'ap-east-1',
+    'sae1': 'sa-east-1'
+};
+
+function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, branchName }) {
     const config = typeof configFile === 'string'
         ? JSON5.parse(fs.readFileSync(path.resolve(configFile), 'utf8'))
         : configFile;
 
     const envSource = config.accounts || config.environments;
 
-    // Region mapping: short code -> full name
-    const regionMapping = {
-        'use1': 'us-east-1',
-        'use2': 'us-east-2',
-        'usw1': 'us-west-1',
-        'usw2': 'us-west-2',
-        'cac1': 'ca-central-1',
-        'euw1': 'eu-west-1',
-        'euw2': 'eu-west-2',
-        'euw3': 'eu-west-3',
-        'euc1': 'eu-central-1',
-        'eun1': 'eu-north-1',
-        'aps1': 'ap-south-1',
-        'apne1': 'ap-northeast-1',
-        'apne2': 'ap-northeast-2',
-        'apne3': 'ap-northeast-3',
-        'apse1': 'ap-southeast-1',
-        'apse2': 'ap-southeast-2',
-        'apse3': 'ap-southeast-3',
-        'ape1': 'ap-east-1',
-        'sae1': 'sa-east-1'
-    };
+    // Handle ephemeral environments
+    let { envName, envConfigName, isEphemeral } = determineEnvironment();
 
     // Convert region to full name if it's a short code
-    const fullRegion = region ? (regionMapping[region] || region) : region;
-    const shortRegion = region ? (Object.keys(regionMapping).find(key => regionMapping[key] === fullRegion) || region) : region;
+    const fullRegion = region ? (AwsRegionMapping[region] || region) : region;
+    const shortRegion = region ? (Object.keys(AwsRegionMapping).find(key => AwsRegionMapping[key] === fullRegion) || region) : region;
 
-    // Validate environment exists
-    if (!envSource || !envSource[env]) {
-        throw new Error(`Environment '${env}' not found in config file`);
+    // Validate environment exists (using envConfigName to support ephemeral cases)
+    if (!envSource || !envSource[envConfigName]) {
+        throw new Error(`Environment '${envConfigName}' not found in config file`);
     }
 
-    // Validate region exists in mapping if provided
-    if (region && !regionMapping[region] && !Object.values(regionMapping).includes(region)) {
+    // Validate region exists in mapping if provided (can use either full region name or short code)
+    if (region && !AwsRegionMapping[region] && !Object.values(AwsRegionMapping).includes(region)) {
         throw new Error(`Region '${region}' is not a valid region code or name`);
+    }
+
+    function determineEnvironment() {
+        let envName = env;
+        let envConfigName = env;
+        let isEphemeral = false;
+
+        // Only process ephemeral logic if ephemeralBranchPrefix is specified and not empty
+        if (ephemeralBranchPrefix && ephemeralBranchPrefix.trim() !== '') {
+            // Check if this is a known environment
+            if (!envSource || !envSource[env]) {
+                // Environment not found, check if this could be ephemeral
+                if (branchName) {
+                    // Create regex pattern for ephemeral branch format
+                    const ephemeralPattern = new RegExp(`^${ephemeralBranchPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[a-z0-9_-]+$`);
+
+                    if (ephemeralPattern.test(branchName)) {
+                        // This is an ephemeral environment
+                        const branchEnvName = branchName.substring(ephemeralBranchPrefix.length);
+
+                        console.log(`!!! envName = ${envName}, branchEnvName = ${branchEnvName}, branchName = ${branchName}`);
+
+                        // Verify that the input envName matches the branch name with or without the prefix
+                        if (envName !== branchEnvName && envName !== branchName) {
+                            console.log(`!!! Ephemeral environment name '${envName}' does not match the branch name '${branchName}'`)
+
+                            throw new Error(`Ephemeral environment name '${envName}' does not match the branch name '${branchName}'`);
+                        }
+
+                        envName = branchEnvName;
+                        envConfigName = 'ephemeral';
+                        isEphemeral = true;
+                    } else {
+                        throw new Error(`Ephemeral environment branches must follow the format '${ephemeralBranchPrefix}<name>' where <name> contains only lowercase letters, numbers, hyphens, and underscores. Current branch: ${branchName}`);
+                    }
+                } else {
+                    // No branch name available, fail with original error
+                    throw new Error(`Environment '${env}' not found in config file`);
+                }
+            }
+        }
+        return { envName, envConfigName, isEphemeral };
     }
 
     function deepMerge(...objects) {
@@ -72,9 +117,9 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
 
     function getMergedComponentConfig(componentName) {
         const defaultComp = config.defaults?.[componentName] || {};
-        const envComp = envSource?.[env]?.[componentName] || {};
+        const envComp = envSource?.[envConfigName]?.[componentName] || {};
         const regionComp = fullRegion
-            ? envSource?.[env]?.regions?.[fullRegion]?.[componentName] || {}
+            ? envSource?.[envConfigName]?.regions?.[fullRegion]?.[componentName] || {}
             : {};
         return deepMerge(defaultComp, envComp, regionComp);
     }
@@ -89,10 +134,10 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
         if (config.defaults) {
             Object.keys(config.defaults).filter(k => isComponent(config.defaults, k)).forEach(k => keys.add(k));
         }
-        if (envSource?.[env]) {
-            Object.keys(envSource[env]).filter(k => isComponent(envSource[env], k) && k !== 'regions').forEach(k => keys.add(k));
-            if (fullRegion && envSource[env].regions?.[fullRegion]) {
-                Object.keys(envSource[env].regions[fullRegion]).filter(k => isComponent(envSource[env].regions[fullRegion], k)).forEach(k => keys.add(k));
+        if (envSource?.[envConfigName]) {
+            Object.keys(envSource[envConfigName]).filter(k => isComponent(envSource[envConfigName], k) && k !== 'regions').forEach(k => keys.add(k));
+            if (fullRegion && envSource[envConfigName].regions?.[fullRegion]) {
+                Object.keys(envSource[envConfigName].regions[fullRegion]).filter(k => isComponent(envSource[envConfigName].regions[fullRegion], k)).forEach(k => keys.add(k));
             }
         }
         return Array.from(keys);
@@ -103,9 +148,9 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
             return typeof v !== 'object' || v === null || Array.isArray(v);
         }
         const d = Object.fromEntries(Object.entries(config.defaults || {}).filter(isNonComponent));
-        const e = Object.fromEntries(Object.entries(envSource?.[env] || {}).filter(isNonComponent));
+        const e = Object.fromEntries(Object.entries(envSource?.[envConfigName] || {}).filter(isNonComponent));
         const r = fullRegion
-            ? Object.fromEntries(Object.entries(envSource?.[env]?.regions?.[fullRegion] || {}).filter(isNonComponent))
+            ? Object.fromEntries(Object.entries(envSource?.[envConfigName]?.regions?.[fullRegion] || {}).filter(isNonComponent))
             : {};
         return deepMerge(d, e, r);
     }
@@ -116,9 +161,11 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
     };
 
     // Add environment and region to the merged result
-    merged.env = env;
+    merged.env_name = envName;
+    merged.env_config_name = envConfigName;
     merged.region = fullRegion || '';
     merged.region_short = shortRegion || '';
+    merged.is_ephemeral = isEphemeral;
 
     if (output === 'flatten') {
         return flatten(merged, '', delimiter || '.');
@@ -126,7 +173,6 @@ function mergeConfig({ configFile, env, region, output, delimiter }) {
     return merged;
 }
 
-// --- Flattening logic
 function flatten(obj, prefix = '', delimiter = '.') {
     let result = {};
     for (const [k, v] of Object.entries(obj)) {
@@ -142,9 +188,9 @@ function flatten(obj, prefix = '', delimiter = '.') {
 
 
 if (require.main === module) {
-    // CLI: --config <path> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform]
+    // CLI: --config <path> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform] [--ephemeral-branch-prefix <prefix>] [--branch-name <name>]
     const args = process.argv.slice(2);
-    let configFile, env, region, output = 'json', delimiter = '.', tfMode = false;
+    let configFile, env, region, output = 'json', delimiter = '.', tfMode = false, ephemeralBranchPrefix, branchName;
 
     for (let i = 0; i < args.length; i++) {
         switch (args[i]) {
@@ -170,6 +216,12 @@ if (require.main === module) {
             case '--terraform':
                 tfMode = true;
                 break;
+            case '--ephemeral-branch-prefix':
+                ephemeralBranchPrefix = args[++i];
+                break;
+            case '--branch-name':
+                branchName = args[++i];
+                break;
             default:
                 console.error(`Unrecognized argument: ${args[i]}`);
                 process.exit(1);
@@ -177,11 +229,11 @@ if (require.main === module) {
     }
 
     if (!configFile || !env) {
-        console.error('Usage: merge-config.js --config <configFile> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform]');
+        console.error('Usage: merge-config.js --config <configFile> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform] [--ephemeral-branch-prefix <prefix>] [--branch-name <name>]');
         process.exit(1);
     }
 
-    const result = mergeConfig({ configFile, env, region, output, delimiter });
+    const result = mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, branchName });
 
     if (tfMode) {
         // For Terraform, output as { "mergedConfig": <object> }

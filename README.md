@@ -60,15 +60,15 @@ locals {
 
 Merged JSON:
 ```sh
-node merge-config.js --config ./test-cfg.json --env dev --region us-west-2 --output json
+node merge-config.js --config ./test-cfg.json5 --env dev --region us-west-2 --output json
 ```
 
 Flattened output (equivalent to what the 'parse-deploy-config' GitHub Action does):
 ```sh
-node merge-config.js --config ./test-cfg.json --env dev --region us-west-2 --output flatten
+node merge-config.js --config ./test-cfg.json5 --env dev --region us-west-2 --output flatten
 ```
 
 Show output for Terraform (equivalent to what the 'merge_config' module does):
 ```sh
-node merge-config.js --config ./test-cfg.json --env dev --region us-west-2 --output json --terraform
+node merge-config.js --config ./test-cfg.json5 --env dev --region us-west-2 --output json --terraform
 ```

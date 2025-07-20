@@ -10,7 +10,7 @@
             ],
             "program": "${workspaceFolder}/merge-config.js",
             "args": [
-                "--config", "./test-cfg.json",
+                "--config", "./test-cfg.json5",
                 "--env", "dev",
                 "--region", "us-west-2",
                 "--flatten"

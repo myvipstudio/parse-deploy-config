@@ -55,8 +55,17 @@ try {
     const env = core.getInput('env', { required: true });
     const region = core.getInput('region', { required: true });
     const delimiter = core.getInput('delimiter') || '.';
+    const ephemeralBranchPrefix = core.getInput('ephemeral-branch-prefix');
 
-    const flat = mergeConfig({ configFile, env, region, output: 'flatten', delimiter });
+    const flat = mergeConfig({
+        configFile,
+        env,
+        region,
+        output: 'flatten',
+        delimiter,
+        ephemeralBranchPrefix,
+        branchName: process.env.GITHUB_REF_NAME
+    });
 
     for (const [k, v] of Object.entries(flat)) {
         core.setOutput(k, v);
