@@ -161,8 +161,12 @@ function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBran
     if (component) {
         // Check if the component exists in the merged config
         if (merged[component] && typeof merged[component] === 'object' && !Array.isArray(merged[component])) {
-            // Hoist the specified component to root level
+            // Get non-component properties to preserve
+            const nonComponentProps = getGlobalMerged();
+            
+            // Hoist the specified component to root level while preserving non-component metadata
             finalResult = {
+                ...nonComponentProps,
                 ...merged[component],
             };
         } else {

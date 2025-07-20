@@ -1,8 +1,9 @@
 const mergeConfig = require('./merge-config');
+const path = require('path');
 
 describe('mergeConfig function', () => {
 
-  const DefaultTestConfigFile = './test-cfg.json5';
+  const DefaultTestConfigFile = path.join(__dirname, 'test-cfg.json5');
 
   test('should correctly parse existing environment with regional overrides', () => {
     const result = mergeConfig({
@@ -317,7 +318,7 @@ describe('mergeConfig function', () => {
 });
 
 describe('ephemeral environment functionality', () => {
-  const DefaultTestConfigFile = './test-cfg.json5';
+  const DefaultTestConfigFile = path.join(__dirname, 'test-cfg.json5');
 
   test('should return normal environment when ephemeral prefix is not specified', () => {
     const result = mergeConfig({
@@ -592,7 +593,7 @@ describe('ephemeral environment functionality', () => {
 });
 
 describe('component functionality', () => {
-  const DefaultTestConfigFile = './test-cfg.json5';
+  const DefaultTestConfigFile = path.join(__dirname, 'test-cfg.json5');
 
   test('should handle component hoisting for tfState', () => {
     const result = mergeConfig({
@@ -615,7 +616,8 @@ describe('component functionality', () => {
     // Should not have other components
     expect(result['network.vpc_cidr']).toBeUndefined();
     expect(result['tags.Project']).toBeUndefined();
-    expect(result.accountId).toBeUndefined();
+    // accountId should be present as it's environment metadata
+    expect(result.accountId).toBe('123456789012');
   });
 
   test('should handle component hoisting for network', () => {
@@ -641,7 +643,8 @@ describe('component functionality', () => {
     // Should not have other components
     expect(result['tfState.bucketName']).toBeUndefined();
     expect(result['tags.Project']).toBeUndefined();
-    expect(result.accountId).toBeUndefined();
+    // accountId should be present as it's environment metadata
+    expect(result.accountId).toBe('123456789012');
   });
 
   test('should throw error for invalid component', () => {
@@ -672,6 +675,23 @@ describe('component functionality', () => {
     expect(result['network.vpc_cidr']).toBe('10.1.0.0/21');
     expect(result['tags.Project']).toBe('project-name');
     expect(result.accountId).toBe('123456789012');
+  });
+
+  test('should retain common metadata associated with environment and region', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'dev',
+      region: 'usw2',
+      output: 'flatten',
+      component: 'network'
+    });
+
+    // Verify common metadata is retained
+    expect(result.env_name).toBe('dev');
+    expect(result.region).toBe('us-west-2');
+    expect(result.region_short).toBe('usw2');
+    expect(result.accountId).toBe('123456789012');
+    expect(result.is_ephemeral).toBe(false);
   });
 
 });
