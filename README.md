@@ -35,6 +35,22 @@ Note that the output from the parse-deploy-config action returns a flattened ver
 nested properties are represented as keys with dot notation. Because of this, you must use bracket notation to access
 these values in from the 'outputs' object, as shown in the example above.
 
+### jq-json5 Utility
+
+After running the parse-deploy-config action, a `jq-json5` utility is made available in the GitHub Actions runner's PATH.
+This utility combines JSON5 parsing capabilities with jq's powerful JSON filtering and transformation features, allowing
+you to process JSON5 configuration files directly with jq syntax:
+
+```yaml
+- name: Process config with jq-json5
+  run: |
+    # Extract specific values from your JSON5 config file
+    jq-json5 './deployment-config.json5' '.network.subnets[] | select(.type == "public")'
+
+    # Transform and filter configuration data
+    jq-json5 './deployment-config.json5' '.environments.dev | keys'
+```
+
 
 ## Terraform Usage
 
