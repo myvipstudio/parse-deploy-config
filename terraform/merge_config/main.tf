@@ -1,5 +1,6 @@
 data "external" "merged_config" {
   program = concat([
+    "env", "TF_DEBUG_DIR=${path.cwd}",
     "node",
     "${path.module}/dist/index.js",
     "--config", var.config_json,
