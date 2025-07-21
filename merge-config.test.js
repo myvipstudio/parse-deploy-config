@@ -150,7 +150,7 @@ describe('mergeConfig function', () => {
     expect(result.region).toBe('us-east-1'); // Should convert short code to full name
     expect(result.region_short).toBe('use1');
     expect(result.accountId).toBe('123456789012'); // From environment config
-    expect(result['network.vpc_cidr']).toBe('10.0.0.0/8'); // From defaults (no region-specific override)
+    expect(result['network.vpc_cidr']).toBe('10.2.0.0/21'); // From environment config
   });
 
   test('should throw error for non-existent config file', () => {
@@ -252,8 +252,8 @@ describe('mergeConfig function', () => {
     expect(result.accountId).toBe('123456789012');
     expect(result.otherField).toBe('some-value');
 
-    // Should use default network config (no region-specific override)
-    expect(result['network.vpc_cidr']).toBe('10.0.0.0/8');
+    // Components should also have environment-level configs
+    expect(result['network.vpc_cidr']).toBe('10.2.0.0/21');
 
     // Should not have region-specific network configs
     expect(result['network.availability_zones']).toBeUndefined();
