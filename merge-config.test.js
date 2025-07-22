@@ -29,28 +29,28 @@ describe('mergeConfig function', () => {
     expect(result['network.private_subnet_cidrs']).toEqual(['10.1.4.0/24', '10.1.5.0/24', '10.1.6.0/24']);
   });
 
-  test('should correctly parse prod environment (defaults only)', () => {
+  test('should correctly parse ephemeral environment with proper values', () => {
     const result = mergeConfig({
       configFile: DefaultTestConfigFile,
-      env: 'prod',
-      region: '',
+      env: 'ephemeral',
+      region: 'usw2',
       output: 'flatten',
       delimiter: '.'
     });
 
-    // Verify only defaults are present for prod
-    expect(result.env_name).toBe('prod');
-    expect(result.region).toBe('');
+    // Verify ephemeral environment works with concrete values
+    expect(result.env_name).toBe('ephemeral');
+    expect(result.region).toBe('us-west-2');
     expect(result['tags.Project']).toBe('project-name');
     expect(result['tags.ManagedBy']).toBe('terraform');
     expect(result['tfState.bucketName']).toBe('tf-state-bucket');
     expect(result['tfState.region']).toBe('us-west-2');
-    expect(result['network.vpc_cidr']).toBe('10.0.0.0/8');
+    expect(result['network.vpc_cidr']).toBe('10.2.0.0/21');
+    expect(result['network.required_network_val']).toBe('ephemeral-network-value');
 
-    // These should not be present since prod has no specific config
-    expect(result.accountId).toBeUndefined();
-    expect(result.otherField).toBeUndefined();
-    expect(result['network.nat_instance_type']).toBeUndefined();
+    // These should be present due to regional overrides
+    expect(result.accountId).toBe('999999999999');
+    expect(result['network.nat_instance_type']).toBe('t4g.nano');
   });
 
   test('should use custom delimiter', () => {
@@ -313,6 +313,97 @@ describe('mergeConfig function', () => {
     expect(parsed['tags.Project']).toBe('project-name');
     expect(parsed['network.vpc_cidr']).toBe('10.1.0.0/21');
     expect(parsed).not.toHaveProperty('mergedConfig');
+  });
+
+  // Tests for null validation feature
+  test('should throw error for prod environment with null required_network_val', () => {
+    expect(() => {
+      mergeConfig({
+        configFile: DefaultTestConfigFile,
+        env: 'prod',
+        region: '',
+        output: 'flatten',
+        delimiter: '.'
+      });
+    }).toThrow("Configuration contains null value at path: network.required_network_val. All required fields must have concrete values defined in the environment configuration.");
+  });
+
+  test('should not throw error for environments with concrete values', () => {
+    expect(() => {
+      mergeConfig({
+        configFile: DefaultTestConfigFile,
+        env: 'dev',
+        region: 'usw2',
+        output: 'flatten',
+        delimiter: '.'
+      });
+    }).not.toThrow();
+
+    // Verify the concrete value is present
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'dev',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.'
+    });
+    expect(result['network.required_network_val']).toBe('dev-network-value');
+  });
+
+  test('should validate null values in nested objects', () => {
+    // Create a config with nested null values
+    const configWithNestedNull = {
+      defaults: {
+        deeply: {
+          nested: {
+            value: null
+          }
+        }
+      },
+      environments: {
+        test: {}
+      }
+    };
+
+    expect(() => {
+      mergeConfig({
+        configFile: configWithNestedNull,
+        env: 'test',
+        region: '',
+        output: 'json'
+      });
+    }).toThrow("Configuration contains null value at path: deeply.nested.value. All required fields must have concrete values defined in the environment configuration.");
+  });
+
+  test('should allow null values if overridden by environment', () => {
+    // Create a config where null in defaults is overridden
+    const configWithOverride = {
+      defaults: {
+        testValue: null
+      },
+      environments: {
+        test: {
+          testValue: "concrete-value"
+        }
+      }
+    };
+
+    expect(() => {
+      mergeConfig({
+        configFile: configWithOverride,
+        env: 'test',
+        region: '',
+        output: 'json'
+      });
+    }).not.toThrow();
+
+    const result = mergeConfig({
+      configFile: configWithOverride,
+      env: 'test',
+      region: '',
+      output: 'json'
+    });
+    expect(result.testValue).toBe('concrete-value');
   });
 
 });

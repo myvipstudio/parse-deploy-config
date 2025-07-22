@@ -15,6 +15,48 @@ are not included in any configuration files that are checked into source control
 These tools are designed to handle JSON5 configuration files, which allows for comments and more flexible syntax
 compared to standard JSON.
 
+## Required Field Validation
+
+The merge-config tool includes automatic validation to ensure that all configuration values are properly defined. If a
+field is set to `null` in the `defaults` section, it must be overridden with a concrete value in the appropriate
+environment configuration. This validation helps enforce that required fields are not accidentally left undefined.
+
+### Example Configuration with Required Fields
+
+```json5
+{
+    "defaults": {          // Default values for all environments
+        "database": {      // 'Components' are defined by adding child objects to the root
+            "host": null,  // Must be defined in environment config
+            "port": 5432   // Optional: has default value
+        }
+    },
+    "environments": {      // Environment-specific configurations (will override defaults)
+        "dev": {
+            "database": {
+                "host": "dev-db.example.com"  // Provides environment-level concrete value for required field
+            }
+        },
+        "prod": {
+            "regions": {
+                "us-west-2": {
+                    "database": {
+                        "host": "prod-db.example.com"  // Provides concrete value for required field
+                    },
+                "us-east-1": {
+                    "database": {
+                        // Missing 'host' field here will trigger validation error when requesting this region since
+                        // the 'prod' region does not have an environment-level value defined for 'host'
+                    }
+                }
+            }
+        }
+    }
+}
+```
+This validation occurs automatically during configuration merging and applies to all tools that use the merge-config
+functionality.
+
 
 ## GitHub Actions Usage
 

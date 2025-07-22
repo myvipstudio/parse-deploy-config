@@ -10,7 +10,8 @@
             "region": "us-west-2"
         },
         "network": {
-            "vpc_cidr": "10.0.0.0/8"
+            "vpc_cidr": "10.0.0.0/8",
+            "required_network_val": null,
         }
     },
     "environments": {
@@ -18,6 +19,9 @@
         "ephemeral": {
             "accountId": "999999999999",
             "name": "Ephemeral Environment",
+            "network": {
+                "required_network_val": "ephemeral-network-value"
+            },
             "regions": {
                 "us-west-2": {
                     "name": "Ephemeral (us-west-2)",
@@ -45,6 +49,7 @@
             "otherField": "some-value",
             "network": {
                 "vpc_cidr": "10.2.0.0/21",
+                "required_network_val": "dev-network-value"
             },
             "regions": {
                 "us-west-2": {

@@ -181,10 +181,27 @@ function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBran
     finalResult.region_short = shortRegion || '';
     finalResult.is_ephemeral = isEphemeral;
 
+    // Validate that no null values exist in the final configuration
+    validateNoNullValues(finalResult);
+
     if (output === 'flatten') {
         return flatten(finalResult, '', delimiter || '.');
     }
     return finalResult;
+}
+
+function validateNoNullValues(obj, path = '') {
+    for (const [key, value] of Object.entries(obj)) {
+        const currentPath = path ? `${path}.${key}` : key;
+        
+        if (value === null) {
+            throw new Error(`Configuration contains null value at path: ${currentPath}. All required fields must have concrete values defined in the environment configuration.`);
+        }
+        
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+            validateNoNullValues(value, currentPath);
+        }
+    }
 }
 
 function flatten(obj, prefix = '', delimiter = '.') {
