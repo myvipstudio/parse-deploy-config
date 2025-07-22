@@ -14,6 +14,10 @@ inputs:
     description: 'Prefix for branches associated with ephemeral environments (default: ephemeral/ - set to empty string to disable)'
     required: false
     default: 'ephemeral/'
+  disable-ephemeral-branch-check:
+    description: 'Disable requirement that current branch name matches ephemeral-branch-prefix for ephemeral environments (default false)'
+    required: false
+    default: 'false'
   delimiter:
     description: 'Delimiter for flattening (default .)'
     required: false

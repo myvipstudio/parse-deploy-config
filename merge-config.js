@@ -27,7 +27,7 @@ const AwsRegionMapping = {
     'sae1': 'sa-east-1'
 };
 
-function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, branchName, component }) {
+function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, disableEphemeralBranchCheck, branchName, component }) {
     const config = typeof configFile === 'string'
         ? JSON5.parse(fs.readFileSync(path.resolve(configFile), 'utf8'))
         : configFile;
@@ -56,37 +56,50 @@ function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBran
         let envConfigName = env;
         let isEphemeral = false;
 
-        // Only process ephemeral logic if ephemeralBranchPrefix is specified and not empty
-        if (ephemeralBranchPrefix && ephemeralBranchPrefix.trim() !== '') {
-            // Check if this is a known environment
-            if (!envSource || !envSource[env]) {
-                // Environment not found, check if this could be ephemeral
-                if (branchName) {
-                    // Create regex pattern for ephemeral branch format
-                    const ephemeralPattern = new RegExp(`^${ephemeralBranchPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[a-z0-9_-]+$`);
+        if (envSource && envSource[env]) {
+            // Environment found, we're done here
+            return { envName, envConfigName, isEphemeral };
+        }
 
-                    if (ephemeralPattern.test(branchName)) {
-                        // This is an ephemeral environment
-                        const branchEnvName = branchName.substring(ephemeralBranchPrefix.length);
+        // Environment not found in configuration, handle ephemeral logic:
 
-                        // Verify that the input envName matches the branch name with or without the prefix
-                        if (envName !== branchEnvName && envName !== branchName) {
-                            throw new Error(`Ephemeral environment name '${envName}' does not match the branch name '${branchName}'`);
-                        }
+        if (!ephemeralBranchPrefix || ephemeralBranchPrefix.trim() === '') {
+            // Environment not found and ephemeral support is disabled, throw an error
+            throw new Error(`Environment '${env}' not found in config file`);
+        }
 
-                        envName = branchEnvName;
-                        envConfigName = 'ephemeral';
-                        isEphemeral = true;
-                    } else {
-                        throw new Error(`Ephemeral environment branches must follow the format '${ephemeralBranchPrefix}<name>' where <name> contains only lowercase letters, numbers, hyphens, and underscores. Current branch: ${branchName}`);
-                    }
-                } else {
-                    // No branch name available, fail with original error
-                    throw new Error(`Environment '${env}' not found in config file`);
+        if (disableEphemeralBranchCheck) {
+            // Environment not found in configuration and ephemeral branch check is disabled - assume it's an
+            // ephemeral environment
+            envConfigName = 'ephemeral';
+            isEphemeral = true;
+        }
+        else if (branchName) {
+            // Create regex pattern for ephemeral branch format
+            const ephemeralPattern = new RegExp(`^${ephemeralBranchPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[a-z0-9_-]+$`);
+
+            if (ephemeralPattern.test(branchName)) {
+                // This is an ephemeral environment
+                const branchEnvName = branchName.substring(ephemeralBranchPrefix.length);
+
+                // Verify that the input envName matches the branch name with or without the prefix
+                if (envName !== branchEnvName && envName !== branchName) {
+                    throw new Error(`Ephemeral environment name '${envName}' does not match the branch name '${branchName}'`);
                 }
+
+                envName = branchEnvName;
+                envConfigName = 'ephemeral';
+                isEphemeral = true;
+            } else {
+                throw new Error(`Ephemeral environment branches must follow the format '${ephemeralBranchPrefix}<name>' where <name> contains only lowercase letters, numbers, hyphens, and underscores. Current branch: ${branchName}`);
             }
         }
-        return { envName, envConfigName, isEphemeral };
+
+        if (isEphemeral) {
+            return { envName, envConfigName, isEphemeral };
+        } else {
+            throw new Error(`Environment '${env}' not found in config file`);
+        }
     }
 
     function deepMerge(...objects) {
@@ -163,7 +176,7 @@ function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBran
         if (merged[component] && typeof merged[component] === 'object' && !Array.isArray(merged[component])) {
             // Get non-component properties to preserve
             const nonComponentProps = getGlobalMerged();
-            
+
             // Hoist the specified component to root level while preserving non-component metadata
             finalResult = {
                 ...nonComponentProps,
@@ -193,11 +206,11 @@ function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBran
 function validateNoNullValues(obj, path = '') {
     for (const [key, value] of Object.entries(obj)) {
         const currentPath = path ? `${path}.${key}` : key;
-        
+
         if (value === null) {
             throw new Error(`Configuration contains null value at path: ${currentPath}. All required fields must have concrete values defined in the environment configuration.`);
         }
-        
+
         if (value && typeof value === 'object' && !Array.isArray(value)) {
             validateNoNullValues(value, currentPath);
         }
@@ -219,9 +232,9 @@ function flatten(obj, prefix = '', delimiter = '.') {
 
 
 if (require.main === module) {
-    // CLI: --config <path> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform] [--ephemeral-branch-prefix <prefix>] [--branch-name <name>] [--debug]
+    // CLI: --config <path> --env <env> [--region <region>] [--output json|flatten] [--delimiter <char>] [--terraform] [--ephemeral-branch-prefix <prefix>] [--disable-ephemeral-branch-check] [--branch-name <name>] [--debug]
     const args = process.argv.slice(2);
-    let configFile, env, region, output = 'json', delimiter = '.', tfMode = false, ephemeralBranchPrefix, branchName, component, debugMode = false;
+    let configFile, env, region, output = 'json', delimiter = '.', tfMode = false, ephemeralBranchPrefix, disableEphemeralBranchCheck = false, branchName, component, debugMode = false;
 
     for (let i = 0; i < args.length; i++) {
         switch (args[i]) {
@@ -250,6 +263,9 @@ if (require.main === module) {
             case '--ephemeral-branch-prefix':
                 ephemeralBranchPrefix = args[++i];
                 break;
+            case '--disable-ephemeral-branch-check':
+                disableEphemeralBranchCheck = true;
+                break;
             case '--branch-name':
                 branchName = args[++i];
                 break;
@@ -270,7 +286,7 @@ if (require.main === module) {
         process.exit(1);
     }
 
-    const result = mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, branchName, component });
+    const result = mergeConfig({ configFile, env, region, output, delimiter, ephemeralBranchPrefix, disableEphemeralBranchCheck, branchName, component });
 
     if (tfMode) {
         // If debug mode is enabled, output human-readable config to stderr for visibility
