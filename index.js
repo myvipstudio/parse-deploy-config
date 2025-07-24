@@ -56,6 +56,7 @@ try {
     const region = core.getInput('region', { required: true });
     const delimiter = core.getInput('delimiter') || '.';
     const ephemeralBranchPrefix = core.getInput('ephemeral-branch-prefix');
+    const disableEphemeralBranchCheck = core.getInput('disable-ephemeral-branch-check') === 'true';
     const displayOutputs = core.getInput('display-outputs') === 'true';
     const component = core.getInput('component') || null;
 
@@ -66,6 +67,7 @@ try {
         output: 'flatten',
         delimiter,
         ephemeralBranchPrefix,
+        disableEphemeralBranchCheck,
         branchName: process.env.GITHUB_REF_NAME,
         component
     });
