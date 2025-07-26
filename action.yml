@@ -29,6 +29,9 @@ inputs:
   component:
     description: 'Specific component that should be returned from the config (default: all components)'
     required: false
+  github-token:
+    description: 'GitHub token to use for authentication with private repositories'
+    required: false
 
 runs:
   using: 'node20'

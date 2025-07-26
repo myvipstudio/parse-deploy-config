@@ -10,6 +10,7 @@
 // code to run.
 
 const core = require('@actions/core');
+const { execSync } = require('child_process');
 const mergeConfig = require('./merge-config');
 const { join } = require('path');
 
@@ -51,6 +52,16 @@ node "${actionRoot}/index.js" --parse "$file" | jq "$@"
 
 // GitHub Action code:
 try {
+    const githubToken = core.getInput('github-token');
+    if (githubToken && process.env.GITHUB_ACTION_REPOSITORY) {
+        const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
+        const repoUrl = `${serverUrl}/${process.env.GITHUB_ACTION_REPOSITORY}.git`;
+        const insteadOfUrl = `ssh://git@${new URL(serverUrl).hostname}/${process.env.GITHUB_ACTION_REPOSITORY}.git`;
+
+        core.info(`Configuring git for private repository access to '${process.env.GITHUB_ACTION_REPOSITORY}' for URLs using '${insteadOfUrl}'`);
+        execSync(`git config --global url."https://oauth2:${githubToken}@${new URL(repoUrl).hostname}${new URL(repoUrl).pathname}".insteadOf "${insteadOfUrl}"`);
+    }
+
     const configFile = core.getInput('config', { required: true });
     const env = core.getInput('env', { required: true });
     const region = core.getInput('region', { required: true });
