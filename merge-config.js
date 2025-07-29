@@ -56,50 +56,61 @@ function mergeConfig({ configFile, env, region, output, delimiter, ephemeralBran
         let envConfigName = env;
         let isEphemeral = false;
 
-        if (envSource && envSource[env]) {
-            // Environment found, we're done here
-            return { envName, envConfigName, isEphemeral };
+        // If a direct match for the env is found in the config, we can return early, unless it's 'ephemeral'.
+        if (env !== 'ephemeral' && envSource && envSource[env]) {
+            return { envName, envConfigName, isEphemeral: false };
         }
 
-        // Environment not found in configuration, handle ephemeral logic:
+        // From here, we are either dealing with an explicit 'ephemeral' env or an env not found in the config.
+        // Both cases might be ephemeral environments.
 
-        if (!ephemeralBranchPrefix || ephemeralBranchPrefix.trim() === '') {
-            // Environment not found and ephemeral support is disabled, throw an error
-            throw new Error(`Environment '${env}' not found in config file`);
-        }
-
-        if (disableEphemeralBranchCheck) {
-            // Environment not found in configuration and ephemeral branch check is disabled - assume it's an
-            // ephemeral environment
+        if (env === 'ephemeral' && envSource && envSource[env]) {
             envConfigName = 'ephemeral';
             isEphemeral = true;
         }
-        else if (branchName) {
-            // Create regex pattern for ephemeral branch format
+
+        if (!ephemeralBranchPrefix || ephemeralBranchPrefix.trim() === '') {
+            // Ephemeral logic is disabled, and we already checked for direct matches.
+            if (!isEphemeral) {
+                throw new Error(`Environment '${env}' not found in config file`);
+            }
+        } else if (disableEphemeralBranchCheck) {
+            // Trust that this is an ephemeral environment without checking the branch name.
+            isEphemeral = true;
+            envConfigName = 'ephemeral';
+            // Note: envName remains as the input 'env' since we can't derive it from a branch.
+        } else if (branchName) {
             const ephemeralPattern = new RegExp(`^${ephemeralBranchPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[a-z0-9_-]+$`);
 
             if (ephemeralPattern.test(branchName)) {
-                // This is an ephemeral environment
                 const branchEnvName = branchName.substring(ephemeralBranchPrefix.length);
 
-                // Verify that the input envName matches the branch name with or without the prefix
-                if (envName !== branchEnvName && envName !== branchName) {
-                    throw new Error(`Ephemeral environment name '${envName}' does not match the branch name '${branchName}'`);
+                // If env was specified (and not 'ephemeral'), it must match the branch-derived name.
+                if (env !== 'ephemeral' && env !== branchEnvName && env !== branchName) {
+                    throw new Error(`Ephemeral environment name '${env}' does not match the branch name '${branchName}'`);
                 }
 
+                isEphemeral = true;
                 envName = branchEnvName;
                 envConfigName = 'ephemeral';
-                isEphemeral = true;
             } else {
+                // Branch name is present but does not match the ephemeral pattern.
                 throw new Error(`Ephemeral environment branches must follow the format '${ephemeralBranchPrefix}<name>' where <name> contains only lowercase letters, numbers, hyphens, and underscores. Current branch: ${branchName}`);
             }
+        } else if (env === 'ephemeral') {
+            // If env is 'ephemeral' but we have no branch name to derive the real name from,
+            // we'll proceed with 'ephemeral' as the envName.
+            isEphemeral = true;
+            envName = 'ephemeral';
+            envConfigName = 'ephemeral';
         }
 
         if (isEphemeral) {
             return { envName, envConfigName, isEphemeral };
-        } else {
-            throw new Error(`Environment '${env}' not found in config file`);
         }
+
+        // If we've reached here, it means it wasn't a direct match and didn't qualify as an ephemeral environment.
+        throw new Error(`Environment '${env}' not found in config file`);
     }
 
     function deepMerge(...objects) {

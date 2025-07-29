@@ -274,4 +274,70 @@ describe('ephemeral environment functionality', () => {
     expect(result.is_ephemeral).toBe(true);
   });
 
+  test('should handle env="ephemeral" and derive env_name from branchName', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'ephemeral',
+      region: 'usw2',
+      output: 'flatten',
+      delimiter: '.',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/my-test-branch'
+    });
+
+    expect(result.env_name).toBe('my-test-branch');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
+    expect(result.accountId).toBe('999999999999');
+  });
+
+  test('should use existing "ephemeral" config when env="ephemeral"', () => {
+    const customConfig = {
+      environments: {
+        ephemeral: {
+          accountId: 'ephemeral-acct-id',
+          some_other_key: 'some_value'
+        }
+      }
+    };
+
+    const result = mergeConfig({
+      configFile: customConfig,
+      env: 'ephemeral',
+      region: 'usw2',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'ephemeral/my-branch'
+    });
+
+    expect(result.env_name).toBe('my-branch');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
+    expect(result.accountId).toBe('ephemeral-acct-id');
+    expect(result.some_other_key).toBe('some_value');
+  });
+
+  test('should set env_name to "ephemeral" when env is "ephemeral" and branchName is missing', () => {
+    const result = mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'ephemeral',
+      region: 'usw2',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: undefined
+    });
+
+    expect(result.env_name).toBe('ephemeral');
+    expect(result.env_config_name).toBe('ephemeral');
+    expect(result.is_ephemeral).toBe(true);
+  });
+
+  test('should throw error if env="ephemeral" and branchName does not match pattern', () => {
+    expect(() => mergeConfig({
+      configFile: DefaultTestConfigFile,
+      env: 'ephemeral',
+      region: 'usw2',
+      ephemeralBranchPrefix: 'ephemeral/',
+      branchName: 'invalid-branch'
+    })).toThrow("Ephemeral environment branches must follow the format 'ephemeral/<name>' where <name> contains only lowercase letters, numbers, hyphens, and underscores. Current branch: invalid-branch");
+  });
+
 });
